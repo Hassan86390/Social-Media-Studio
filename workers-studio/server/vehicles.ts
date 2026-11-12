@@ -13,18 +13,39 @@ const parse = (row: any, photos: any[] = []) => ({
   updated: row.updated,
   postId: row.post_id,
   photos,
+  photoCount: row.photo_count ?? photos.length,
 });
 export async function vehicles(store: any, r: Request, path: string[]) {
   const key = path[1];
   if (r.method === "GET" && !key)
     return Response.json({
       listings: store
-        .rows("SELECT * FROM vehicle_listings ORDER BY updated DESC LIMIT 500")
+        .rows(
+          "SELECT v.*, (SELECT COUNT(*) FROM vehicle_photos p WHERE p.listing_id=v.id) AS photo_count FROM vehicle_listings v ORDER BY updated DESC LIMIT 500",
+        )
         .map((row: any) => parse(row)),
     });
   if (!key || !/^[a-zA-Z0-9-]{1,64}$/.test(key))
     throw new HttpError(400, "Invalid listing ID.");
   const old = store.one("SELECT * FROM vehicle_listings WHERE id=?", key);
+  if (r.method === "GET" && path[2] === "photo") {
+    if (!old) throw new HttpError(404, "Listing not found.");
+    const photo = store.one(
+      "SELECT data FROM vehicle_photos WHERE listing_id=? ORDER BY position LIMIT 1",
+      key,
+    );
+    if (!photo) throw new HttpError(404, "No reference photo attached.");
+    const [header, data] = photo.data.split(",");
+    return new Response(
+      Uint8Array.from(atob(data), (c) => c.charCodeAt(0)),
+      {
+        headers: {
+          "Content-Type": header.slice(5).split(";")[0],
+          "Cache-Control": "no-store, private",
+        },
+      },
+    );
+  }
   if (r.method === "GET") {
     if (!old) throw new HttpError(404, "Listing not found.");
     return Response.json(

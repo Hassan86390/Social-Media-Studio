@@ -233,19 +233,32 @@
             </p>
             <div id="warnings"></div>
             <form id="vehicleForm">
+              <section
+                class="reference-photos"
+                aria-labelledby="referenceHeading"
+              >
+                <div class="between">
+                  <h3 id="referenceHeading">Vehicle reference photos</h3>
+                  <span id="photoCount" class="pill">0 / 8</span>
+                </div>
+                <p class="hint">
+                  Attach photos to this car’s details. Click a photo to view it
+                  full size. Save draft or sync to cloud to keep attachments.
+                </p>
+                <button id="attachPhotos" type="button" class="secondary">
+                  + Attach photos</button
+                ><span class="hint">
+                  JPEG, PNG or WebP · up to 8 photos, 3 MB each</span
+                ><input
+                  id="photos"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  hidden
+                />
+                <div id="photoList"></div>
+              </section>
               <div id="fields" class="fields"></div>
-              <label class="upload" for="photos"
-                >+ Add vehicle photographs<small
-                  >JPEG, PNG or WebP · up to 8 photos, 3 MB each</small
-                ></label
-              ><input
-                id="photos"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                hidden
-              />
-              <div id="photoList"></div>
               <div class="fields">
                 <div>
                   <label for="listingStatus">Inventory status</label
@@ -338,6 +351,15 @@
           </section>
         </div>
       </div>
+      <dialog id="photoViewer" aria-labelledby="photoViewerTitle">
+        <div class="between">
+          <h3 id="photoViewerTitle">Vehicle photo</h3>
+          <button id="closePhotoViewer" type="button" class="secondary">
+            Close
+          </button>
+        </div>
+        <img id="photoViewerImage" alt="" />
+      </dialog>
       <footer>
         Dream Motors
         <span>0335-4727638 · We Buy, Sell & Inspect Vehicles.</span>

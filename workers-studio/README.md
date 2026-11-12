@@ -23,6 +23,10 @@ The additive schema creates `vehicle_listings`, `vehicle_photos`, and `vehicle_m
 
 Local browser drafts are separate from the standalone Pages origin; they are not silently uploaded or moved. The old Pages site remains accessible.
 
+## Vehicle reference photos
+
+In `/vehicles/`, use **Vehicle reference photos → Attach photos** above the vehicle fields. Attach up to eight JPEG/PNG/WebP files (3 MB input each). Click a thumbnail for a larger view; use Remove to detach it. Save draft retains photos in this browser; Sync to cloud retains them with the car across devices. Inventory entries show a photo count and a protected thumbnail. Full photo previews require the existing owner session. Photos also follow the existing explicit planner-transfer workflow.
+
 ## Optional OpenAI
 
 In this **Worker's** Cloudflare Settings → Variables and Secrets, add encrypted `OPENAI_API_KEY`. Optionally set `OPENAI_MODEL` (default `gpt-4.1-mini`). Do not add it to frontend assets or commit it. The AI handler uses the existing verified owner session, rate limits requests, validates response structure, redacts common private contact patterns, and requires manual review of generated claims. Without the secret, templates, inventory, media, posters and planner integration work; AI returns a clear unavailable message.

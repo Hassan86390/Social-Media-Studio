@@ -73,6 +73,20 @@ r = await call("/listings/" + id, item, "PUT");
 assert.equal(r.status, 200, JSON.stringify(r.data));
 assert.equal(r.data.revision, 1);
 assert.equal((await call("/listings/" + id)).data.photos.length, 1);
+assert.equal(
+  (await call("/listings")).data.listings.find((x) => x.id === id).photoCount,
+  1,
+);
+const preview = await fetch(base + "/api/listings/" + id + "/photo", {
+  headers: { Cookie: cookies },
+});
+assert.equal(preview.status, 200);
+assert.equal(preview.headers.get("content-type"), "image/png");
+assert.match(preview.headers.get("cache-control"), /private/);
+assert.ok((await preview.arrayBuffer()).byteLength > 16);
+const blocked = await fetch(base + "/api/listings/" + id + "/photo");
+assert.equal(blocked.status, 401);
+
 assert.equal((await call("/listings/" + id, item, "PUT")).status, 409);
 r = await call("/listings/" + id + "/planner", {});
 assert.equal(r.status, 200, JSON.stringify(r.data));
@@ -112,6 +126,24 @@ assert.equal(
 assert.equal(
   (await call("/ai", { action: "generate", values: item.values })).status,
   503,
+);
+const removed = await call(
+  "/listings/" + id,
+  { ...item, photos: [], revision: 1 },
+  "PUT",
+);
+assert.equal(removed.status, 200);
+assert.equal(
+  (await call("/listings")).data.listings.find((x) => x.id === id).photoCount,
+  0,
+);
+assert.equal(
+  (
+    await fetch(base + "/api/listings/" + id + "/photo", {
+      headers: { Cookie: cookies },
+    })
+  ).status,
+  404,
 );
 await call("/logout", {});
 cookies = "";

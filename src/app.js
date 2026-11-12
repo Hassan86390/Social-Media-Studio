@@ -161,23 +161,47 @@ function updateApproval() {
 }
 function renderPhotos() {
   $("photoList").replaceChildren();
+  $("photoCount").textContent = current.photos.length + " / 8";
   current.photos.forEach((p, i) => {
-    const box = document.createElement("div"),
+    const box = document.createElement("figure"),
+      view = document.createElement("button"),
       img = document.createElement("img"),
-      b = document.createElement("button");
+      caption = document.createElement("figcaption"),
+      remove = document.createElement("button");
+    view.type = "button";
+    view.className = "photo-preview";
+    view.setAttribute("aria-label", "View photo " + (i + 1) + ": " + p.name);
     img.src = p.data;
     img.alt = p.name;
-    b.textContent = "Remove";
-    b.type = "button";
-    b.onclick = () => {
+    view.append(img);
+    view.onclick = () => {
+      $("photoViewerTitle").textContent = p.name;
+      $("photoViewerImage").src = p.data;
+      $("photoViewerImage").alt = p.name;
+      $("photoViewer").showModal();
+    };
+    caption.textContent = p.name;
+    remove.textContent = "Remove";
+    remove.type = "button";
+    remove.className = "remove-photo";
+    remove.setAttribute("aria-label", "Remove photo " + (i + 1));
+    remove.onclick = () => {
       current.photos.splice(i, 1);
       renderPhotos();
+      notify("Photo removed from this draft. Save or sync to keep the change.");
     };
-    box.append(img, b);
+    box.append(view, caption, remove);
     $("photoList").append(box);
   });
 }
+$("attachPhotos").onclick = () => $("photos").click();
+$("closePhotoViewer").onclick = () => $("photoViewer").close();
+$("photoViewer").addEventListener("close", () => {
+  $("photoViewerImage").removeAttribute("src");
+});
 $("photos").onchange = async (e) => {
+  const listingId = current.id;
+  let added = 0;
   for (const f of e.target.files) {
     if (current.photos.length >= 8) {
       notify("Maximum eight photographs.");
@@ -192,13 +216,21 @@ $("photos").onchange = async (e) => {
     }
     try {
       const data = await compressPhoto(f);
+      if (current.id !== listingId) return;
+      if (current.photos.length >= 8) break;
       current.photos.push({ name: f.name, data });
+      added++;
     } catch (error) {
       notify(error.message);
     }
   }
   renderPhotos();
   e.target.value = "";
+  if (added)
+    notify(
+      added +
+        " photo(s) attached to this car. Save draft or sync to cloud to keep them.",
+    );
 };
 function showStudio() {
   showPanel("workspace", "studioNav");
@@ -705,7 +737,33 @@ function listingRow(item) {
   ]
     .filter(Boolean)
     .join(" · ");
-  row.append(title, detail);
+  const count =
+    item.source === "Cloud"
+      ? (item.photoCount ?? item.photos?.length ?? 0)
+      : (item.photos?.length ?? 0);
+  const photoNote = document.createElement("span");
+  photoNote.className = "inventory-photo-note";
+  photoNote.textContent = count
+    ? count + " reference photo" + (count === 1 ? "" : "s")
+    : "No reference photos";
+  if (count) {
+    const image = document.createElement("img");
+    image.className = "inventory-photo";
+    image.alt = "Reference photo for " + title.textContent;
+    image.loading = "lazy";
+    const src =
+      item.source === "Cloud" && existingStudio
+        ? "/api/listings/" +
+          encodeURIComponent(item.id) +
+          "/photo?v=" +
+          encodeURIComponent(item.updated)
+        : item.photos?.[0]?.data || "";
+    if (src) {
+      image.src = src;
+      row.append(image);
+    }
+  }
+  row.append(title, detail, photoNote);
   row.onclick = () => openInventoryItem(item);
   return row;
 }
