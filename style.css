@@ -739,3 +739,5 @@ button:disabled {
     height: 65px;
   }
 }
+
+.output textarea{line-height:1.4}

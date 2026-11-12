@@ -5,6 +5,7 @@ import {
   extract,
   generate,
   redact,
+  compactText,
 } from "./engine.js";
 import { createPoster, compressPhoto } from "./poster.js";
 import { calendarICS, localDateTime } from "./planner.js";
@@ -82,6 +83,7 @@ function renderOutputs() {
     const heading = document.createElement("h3");
     heading.textContent = label + (current.approved[key] ? " · Approved" : "");
     const area = document.createElement("textarea");
+    current.outputs[key]=compactText(current.outputs[key]);
     area.value = current.outputs[key];
     area.rows = key === "caption" ? 9 : 4;
     area.setAttribute("aria-label", label);
@@ -91,6 +93,7 @@ function renderOutputs() {
       current.approved[key] = false;
       updateApproval();
     };
+    area.onblur=()=>{current.outputs[key]=compactText(area.value);area.value=current.outputs[key];};
     const tools = document.createElement("div");
     tools.className = "tools";
     for (const [name, fn] of [

@@ -49,3 +49,5 @@ test("seller contacts removed and business contact retained", () => {
     /03001234567|seller@example.com/,
   );
 });
+
+test("descriptions use consecutive lines without empty paragraphs", async()=>{const {compactText}=await import("../src/engine.js");assert.equal(compactText(" First line\n\n Second line\r\n  \r\nThird line "),"First line\nSecond line\nThird line");assert.doesNotMatch(generate(extract(example).values).caption,/\n\s*\n/);});

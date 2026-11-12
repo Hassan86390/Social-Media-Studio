@@ -160,7 +160,7 @@ export function generate(values) {
     .join("\n");
   return {
     title,
-    caption: [title, ...facts, disclaimer, footer].join("\n\n"),
+    caption: [title, ...facts, disclaimer, footer].join("\n"),
     hashtags: [
       ...new Set(
         ["DreamMotors", v.make, v.model, v.location, "PakistanCars"]
@@ -179,3 +179,5 @@ export function generate(values) {
     whatsapp: [title, ...facts, disclaimer, footer].join("\n"),
   };
 }
+
+export function compactText(text="") { return String(text).split(/\r?\n/).map(line=>line.trim()).filter(Boolean).join("\n"); }
