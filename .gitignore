@@ -8,3 +8,6 @@ wrangler.jsonc
 
 __pycache__/
 *.pyc
+
+!workers-studio/wrangler.jsonc
+workers-studio/public/vehicles/

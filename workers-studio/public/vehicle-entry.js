@@ -1,0 +1,3 @@
+// A link alongside the original planner; its compiled UI is preserved unchanged.
+async function mount(){try{const session=await fetch('/api/session',{credentials:'same-origin'});if(!session.ok)return;if(document.getElementById('vehicle-workspace-link'))return;const link=document.createElement('a');link.id='vehicle-workspace-link';link.href='/vehicles/';link.textContent='Vehicle Listing Studio ↗';link.setAttribute('aria-label','Open Vehicle Listing Studio');document.body.append(link);}catch{}}
+mount();let timer=setInterval(mount,15000);window.addEventListener('pagehide',()=>clearInterval(timer));

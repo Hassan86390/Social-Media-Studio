@@ -1,5 +1,9 @@
 # Dream Motors Social Media Studio
 
+The **main application** is now the existing [Workers planner](https://dream-motors-social-studio.natriq73.workers.dev/), with the vehicle workspace under `/vehicles/`. See [main-app integration instructions](workers-studio/README.md). It reuses existing Supabase authentication and Durable Object storage; D1 is not required for that app.
+
+The remaining instructions describe the separate standalone Pages deployment, retained for compatibility.
+
 Vehicle listing workspace for Cloudflare Pages, with an optional D1-backed private account system and server-side OpenAI integration.
 
 ## Current features

@@ -1,0 +1,26 @@
+{
+  "name": "dream-motors-social-studio",
+  "main": "server/index.ts",
+  "compatibility_date": "2026-11-10",
+  "keep_vars": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/go/*"],
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STUDIO",
+        "class_name": "StudioStore",
+      },
+    ],
+  },
+  "exports": {
+    "StudioStore": {
+      "type": "durable-object",
+      "storage": "sqlite",
+    },
+  },
+}

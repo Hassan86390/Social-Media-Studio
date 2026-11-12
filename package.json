@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "python3 -m http.server 5173 --bind 0.0.0.0",
     "test": "node --test",
-    "build": "node build.js"
+    "build": "node build.js",
+    "build:workers": "node build-workers.js",
+    "dev:workers": "npm run build:workers && npx --yes wrangler@4.160.1 dev --config workers-studio/wrangler.jsonc"
   }
 }
