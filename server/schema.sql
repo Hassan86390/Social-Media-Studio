@@ -1,0 +1,7 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, password_hash TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires);
+CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS listings (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, id TEXT NOT NULL, data TEXT NOT NULL, revision INTEGER NOT NULL, updated TEXT NOT NULL, write_token TEXT NOT NULL, PRIMARY KEY(user_id,id));
+CREATE TABLE IF NOT EXISTS photos (user_id TEXT NOT NULL, listing_id TEXT NOT NULL, position INTEGER NOT NULL, name TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(user_id,listing_id,position), FOREIGN KEY(user_id,listing_id) REFERENCES listings(user_id,id) ON DELETE CASCADE);

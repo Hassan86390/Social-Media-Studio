@@ -1,1 +1,348 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dream Motors · Listing Studio</title><link rel="stylesheet" href="style.css"></head><body><aside><a class="brand" href="./"><span class="mark">DM</span> DREAM MOTORS<small>SOCIAL MEDIA STUDIO</small></a><div class="nav-label">WORKSPACE</div><button class="nav active" id="studioNav">▤ &nbsp; Listing generator</button><button class="nav" id="draftNav">▧ &nbsp; Saved listings <span id="count">0</span></button><div class="aside-bottom"><span class="dot"></span> Local workspace<small>We Buy, Sell & Inspect Vehicles.</small></div></aside><main><header><span>Workspace <b>/</b> Vehicle Listing Generator</span><span class="pill">DREAM MOTORS STUDIO</span></header><section class="intro"><div><div class="eyebrow">FROM SELLER MESSAGE TO SHARE-READY COPY</div><h1>Every vehicle has a story.<br><span>Make yours ready to share.</span></h1><p>Capture the facts. Review the details. Create consistent content for every channel.</p></div><button id="new" class="secondary">+ New listing</button></section><div class="notice">Browser-only workspace · No account or server storage. Use this on a trusted device. Export drafts for backup.</div><div id="status" role="status" aria-live="polite"></div><section id="draftPanel" hidden><div class="section-heading"><h2>Saved listings</h2><p>Stored only in this browser. Click a listing to reopen it.</p></div><div id="draftList"></div></section><div id="workspace"><div class="steps"><span><b>01</b> Add information</span><span><b>02</b> Review details</span><span><b>03</b> Create & approve</span></div><div class="columns"><section class="card input-card"><div class="section-heading"><span class="eyebrow">START WITH THE FACTS</span><h2>Vehicle information</h2><p>Paste a seller’s message or enter details below.</p></div><div class="tabs"><button id="pasteTab" class="selected">Quick paste</button><button id="manualTab">Manual entry</button></div><div id="pastePanel"><label for="message">Seller’s WhatsApp message</label><textarea id="message" rows="9" placeholder="Paste the vehicle details here…\nEnglish, Urdu or Roman Urdu"></textarea><div class="between"><button id="example" class="text-button">Try the Cuore example ↗</button><button id="extract" class="primary">Extract details →</button></div><p class="hint">Rule-based extraction. Review all results; mixed-language support is limited.</p></div><div class="review-head"><h3>Review vehicle details</h3><span class="pill">EDITABLE</span></div><p class="hint">Make and model are required. Leave optional fields blank or enter “Unknown”. Inspection requires your confirmation.</p><div id="warnings"></div><form id="vehicleForm"><div id="fields" class="fields"></div><label class="upload" for="photos">+ Add vehicle photographs<small>JPEG, PNG or WebP · up to 8 photos, 3 MB each</small></label><input id="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden><div id="photoList"></div><button type="submit" class="primary full">Generate content ↗</button></form></section><section class="card output-card"><div class="section-heading"><div class="between"><span class="eyebrow">ONE LISTING. EVERY FORMAT.</span><span id="approval" class="pill">DRAFT</span></div><h2>Your content studio</h2><p>Fact-based templates · edit and approve each format.</p></div><div id="empty"><div class="empty-icon">▤</div><h3>Good listings start with good details.</h3><p>Add your vehicle information, then generate seven ready-to-edit content formats.</p><div class="format-chips"><span>Social captions</span><span>Feed & story text</span><span>Video scripts</span></div></div><div id="outputs"></div><div class="actions"><button id="save" class="primary">Save draft</button><button id="export" class="secondary">Export JSON</button><button id="exportCopy" class="secondary">Export public copy</button></div><p class="hint">No automatic publishing or Canva editing. Copy approved text into your design or publishing tool. Private draft exports include seller information.</p></section></div></div><footer>Dream Motors <span>0335-4727638 · We Buy, Sell & Inspect Vehicles.</span></footer></main><script type="module" src="src/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dream Motors · Listing Studio</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <aside>
+      <a class="brand" href="./"
+        ><span class="mark">DM</span> DREAM MOTORS<small
+          >SOCIAL MEDIA STUDIO</small
+        ></a
+      >
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav active" id="studioNav">
+        ▤ &nbsp; Listing generator</button
+      ><button class="nav" id="draftNav">
+        ▧ &nbsp; Saved listings <span id="count">0</span></button
+      ><button class="nav" id="inventoryNav">▦ &nbsp; Vehicle inventory</button
+      ><button class="nav" id="calendarNav">▣ &nbsp; Content calendar</button
+      ><button class="nav" id="accountNav">◯ &nbsp; Account & sync</button>
+      <div class="aside-bottom">
+        <span class="dot"></span> Local workspace<small
+          >We Buy, Sell & Inspect Vehicles.</small
+        >
+      </div>
+    </aside>
+    <main>
+      <header>
+        <span>Workspace <b>/</b> Vehicle Listing Generator</span
+        ><span class="pill">DREAM MOTORS STUDIO</span>
+      </header>
+      <section class="intro">
+        <div>
+          <div class="eyebrow">FROM SELLER MESSAGE TO SHARE-READY COPY</div>
+          <h1>
+            Every vehicle has a story.<br /><span
+              >Make yours ready to share.</span
+            >
+          </h1>
+          <p>
+            Capture the facts. Review the details. Create consistent content for
+            every channel.
+          </p>
+        </div>
+        <button id="new" class="secondary">+ New listing</button>
+      </section>
+      <div class="notice">
+        Local drafts stay in this browser. Sign in to sync selected listings
+        across devices. Review all content before sharing.
+      </div>
+      <div id="status" role="status" aria-live="polite"></div>
+      <section id="accountPanel" class="card feature-panel" hidden>
+        <span class="eyebrow">YOUR PRIVATE CLOUD WORKSPACE</span>
+        <h2>Account & sync</h2>
+        <p id="cloudStatus">Checking cloud connection…</p>
+        <form id="authForm">
+          <div class="fields">
+            <div>
+              <label for="username">Username</label
+              ><input
+                id="username"
+                autocomplete="username"
+                pattern="[a-zA-Z0-9_.-]{3,48}"
+                minlength="3"
+                maxlength="48"
+                required
+              />
+            </div>
+            <div>
+              <label for="password">Password · at least 12 characters</label
+              ><input
+                id="password"
+                type="password"
+                autocomplete="current-password"
+                minlength="12"
+                maxlength="128"
+                required
+              />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Sign in</button
+            ><button id="signup" type="button" class="secondary">
+              Create account
+            </button>
+          </div>
+          <p class="hint">
+            Each account has a private workspace. Choose a unique password and
+            keep it safe: self-service password recovery is not available yet.
+          </p>
+        </form>
+        <div id="signedIn" hidden>
+          <p id="identity"></p>
+          <button id="logout" class="secondary">Sign out</button>
+          <p class="hint">
+            Cloud data stays private to your account. Local drafts remain
+            available on this device after signing out; use a trusted browser.
+          </p>
+        </div>
+      </section>
+      <section id="inventoryPanel" class="card feature-panel" hidden>
+        <span class="eyebrow">YOUR VEHICLE WORKSPACE</span>
+        <h2>Vehicle inventory</h2>
+        <p>
+          Search saved listings and open one to edit its status, content and
+          media.
+        </p>
+        <div class="fields">
+          <div>
+            <label for="inventorySearch"
+              >Search make, model, year or location</label
+            ><input
+              id="inventorySearch"
+              type="search"
+              placeholder="Search vehicles…"
+            />
+          </div>
+          <div>
+            <label for="inventoryFilter">Status</label
+            ><select id="inventoryFilter">
+              <option value="">All statuses</option>
+              <option>Available</option>
+              <option>Reserved</option>
+              <option>Sold</option>
+              <option>Required</option>
+              <option>Archived</option>
+            </select>
+          </div>
+        </div>
+        <div id="inventoryList"></div>
+      </section>
+      <section id="calendarPanel" class="card feature-panel" hidden>
+        <div class="between">
+          <div>
+            <span class="eyebrow">PLAN YOUR NEXT POST</span>
+            <h2>Content calendar</h2>
+          </div>
+          <button id="exportCalendar" class="secondary">
+            Export calendar (.ics)
+          </button>
+        </div>
+        <p>
+          Calendar plans are reminders for manual posting. Nothing is
+          automatically published.
+        </p>
+        <div class="fields">
+          <div>
+            <label for="calendarMonth">Month</label
+            ><input id="calendarMonth" type="month" />
+          </div>
+          <div>
+            <label for="calendarFilter">Channel</label
+            ><select id="calendarFilter">
+              <option value="">All channels</option>
+              <option>Facebook</option>
+              <option>Instagram</option>
+              <option>WhatsApp</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div id="calendarGrid"></div>
+        <div id="calendarList"></div>
+      </section>
+      <section id="draftPanel" hidden>
+        <div class="section-heading">
+          <h2>Saved listings</h2>
+          <p>Stored only in this browser. Click a listing to reopen it.</p>
+        </div>
+        <div id="draftList"></div>
+      </section>
+      <div id="workspace">
+        <div class="steps">
+          <span><b>01</b> Add information</span
+          ><span><b>02</b> Review details</span
+          ><span><b>03</b> Create & approve</span>
+        </div>
+        <div class="columns">
+          <section class="card input-card">
+            <div class="section-heading">
+              <span class="eyebrow">START WITH THE FACTS</span>
+              <h2>Vehicle information</h2>
+              <p>Paste a seller’s message or enter details below.</p>
+            </div>
+            <div class="tabs">
+              <button id="pasteTab" class="selected">Quick paste</button
+              ><button id="manualTab">Manual entry</button>
+            </div>
+            <div class="fields generation-settings">
+              <div>
+                <label for="generationMode">Content engine</label
+                ><select id="generationMode">
+                  <option value="template">Fact-based templates</option>
+                  <option value="ai">AI · account required</option>
+                </select>
+              </div>
+              <div>
+                <label for="language">AI output language</label
+                ><select id="language">
+                  <option>English</option>
+                  <option>Urdu</option>
+                  <option>Roman Urdu</option>
+                </select>
+              </div>
+            </div>
+            <div id="pastePanel">
+              <label for="message">Seller’s WhatsApp message</label
+              ><textarea
+                id="message"
+                rows="9"
+                placeholder="Paste the vehicle details here…\nEnglish, Urdu or Roman Urdu"
+              ></textarea>
+              <div class="between">
+                <button id="example" class="text-button">
+                  Try the Cuore example ↗</button
+                ><button id="extract" class="primary">Extract details →</button>
+              </div>
+              <p class="hint">
+                Rule-based extraction. Review all results; mixed-language
+                support is limited.
+              </p>
+            </div>
+            <div class="review-head">
+              <h3>Review vehicle details</h3>
+              <span class="pill">EDITABLE</span>
+            </div>
+            <p class="hint">
+              Make and model are required. Leave optional fields blank or enter
+              “Unknown”. Inspection requires your confirmation.
+            </p>
+            <div id="warnings"></div>
+            <form id="vehicleForm">
+              <div id="fields" class="fields"></div>
+              <label class="upload" for="photos"
+                >+ Add vehicle photographs<small
+                  >JPEG, PNG or WebP · up to 8 photos, 3 MB each</small
+                ></label
+              ><input
+                id="photos"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                hidden
+              />
+              <div id="photoList"></div>
+              <div class="fields">
+                <div>
+                  <label for="listingStatus">Inventory status</label
+                  ><select id="listingStatus">
+                    <option>Available</option>
+                    <option>Reserved</option>
+                    <option>Sold</option>
+                    <option>Required</option>
+                    <option>Archived</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="scheduleAt">Plan a post · your device time</label
+                  ><input id="scheduleAt" type="datetime-local" />
+                </div>
+                <div>
+                  <label for="scheduleChannel">Channel</label
+                  ><select id="scheduleChannel">
+                    <option>Facebook</option>
+                    <option>Instagram</option>
+                    <option>WhatsApp</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="scheduleState">Posting task status</label
+                  ><select id="scheduleState">
+                    <option>Planned</option>
+                    <option>Ready</option>
+                    <option>Posted</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="primary full">
+                Generate content ↗
+              </button>
+            </form>
+          </section>
+          <section class="card output-card">
+            <div class="section-heading">
+              <div class="between">
+                <span class="eyebrow">ONE LISTING. EVERY FORMAT.</span
+                ><span id="approval" class="pill">DRAFT</span>
+              </div>
+              <h2>Your content studio</h2>
+              <p>
+                Choose templates or connected AI. Review and approve each
+                format.
+              </p>
+            </div>
+            <div id="empty">
+              <div class="empty-icon">▤</div>
+              <h3>Good listings start with good details.</h3>
+              <p>
+                Add your vehicle information, then generate seven ready-to-edit
+                content formats.
+              </p>
+              <div class="format-chips">
+                <span>Social captions</span><span>Feed & story text</span
+                ><span>Video scripts</span>
+              </div>
+            </div>
+            <div id="outputs"></div>
+            <div class="actions">
+              <button id="save" class="primary">Save draft</button
+              ><button id="sync" class="secondary">Sync to cloud</button
+              ><button id="export" class="secondary">Export JSON</button
+              ><button id="exportCopy" class="secondary">
+                Export public copy
+              </button>
+            </div>
+            <div class="poster-tools">
+              <h3>Branded poster downloads</h3>
+              <p class="hint">
+                Uses reviewed vehicle facts and the first photo. Feed 1080 ×
+                1350 · Story 1080 × 1920.
+              </p>
+              <button id="posterFeed" class="secondary">
+                Download feed PNG
+              </button>
+              <button id="posterStory" class="secondary">
+                Download story PNG
+              </button>
+            </div>
+            <p class="hint">
+              No automatic publishing or Canva editing. Copy approved text into
+              your design or publishing tool. Private draft exports include
+              seller information.
+            </p>
+          </section>
+        </div>
+      </div>
+      <footer>
+        Dream Motors
+        <span>0335-4727638 · We Buy, Sell & Inspect Vehicles.</span>
+      </footer>
+    </main>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

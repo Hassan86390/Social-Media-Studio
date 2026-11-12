@@ -1,10 +1,20 @@
 # Dream Motors Social Media Studio
 
-A responsive, dependency-free listing workspace prepared for Cloudflare Pages.
+Vehicle listing workspace for Cloudflare Pages, with an optional D1-backed private account system and server-side OpenAI integration.
 
-## Run and validate
+## Current features
 
-Requires Node.js 22+ and Python 3 for the optional development server.
+- Quick paste in English, Urdu or Roman Urdu through optional AI; conservative rule-based extraction remains available without AI. Review editable vehicle fields and ambiguity warnings before generation.
+- Seven editable text formats, independent regeneration, approvals, private contact redaction and seller-information disclaimers. AI output always requires human fact checking.
+- Local IndexedDB drafts retained across this upgrade, up to eight compressed photos, JSON backup and public text exports.
+- Searchable saved vehicle inventory with Available / Reserved / Sold / Required / Archived statuses. Existing listings reopen for editing without creating new records.
+- Content calendar with channel and manual task statuses, device-local date/time entry, and UTC iCalendar export. Calendar entries are reminders, not automatic social posts.
+- Branded PNG downloads, 1080 × 1350 feed and 1080 × 1920 story. Posters use reviewed facts and the first attached photo. No Canva API integration.
+- Optional username/password accounts, private D1 listings/photos, explicit individual sync, optimistic revisions, request size limits, HttpOnly Secure SameSite sessions, PBKDF2 password hashes and database-backed rate limits.
+
+## Local build and unit checks
+
+Node.js 22+ required. No application dependencies or frontend secrets.
 
 ```sh
 npm test
@@ -12,34 +22,60 @@ npm run build
 npm run dev
 ```
 
-The development server uses port 5173. Cloudflare deploys the generated `dist` directory.
+`npm run dev` serves static assets on port 5173. Local drafts, inventory, calendar, template generation and PNG export work there; `/api` requires the Cloudflare local runtime below. Build output is `dist`.
 
-## Cloudflare Pages
+## Local cloud integration testing
 
-1. Push this project to your GitHub repository.
-2. In Cloudflare, open Workers & Pages → Create application → Pages → Import an existing Git repository.
-3. Select the repository and branch. Framework preset: None. Build command: `npm run build`. Build output: `dist`.
-4. Choose a project name, such as `dream-motors-studio`, and deploy. Cloudflare assigns `<project-name>.pages.dev`, subject to availability.
+Use the existing isolated checkout. Do not create a Git worktree for setup. Keep local credentials and state outside tracked source.
 
-Alternatively, run `npm run build` and upload the contents of `dist` through Pages Direct Upload. The supplied deployment ZIP contains those files at its root.
+Create an ignored `wrangler.jsonc` in the project root for local testing (remove it before production deployment, or replace the ID with the real production database ID):
 
-No API credentials or runtime environment variables are required. HTTPS is required for clipboard access. This repository does not publish itself or manage your Cloudflare account.
+```json
+{
+  "name": "dream-motors-studio",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-11-10",
+  "d1_databases": [{"binding":"DB", "database_name":"dream-motors-local", "database_id":"00000000-0000-0000-0000-000000000001"}]
+}
+```
 
-## Available workflow
+```sh
+npx --yes wrangler@4.160.1 d1 execute DB --local --file server/schema.sql
+npx --yes wrangler@4.160.1 pages dev --port 8788
+# In a second terminal, using the same checkout:
+node scripts/smoke.mjs
+```
 
-- Quick paste with conservative rule-based extraction, manual entry of all specified vehicle fields, warnings for conflicting years/transmissions, and a compact review form.
-- Seven separate, editable, fact-based text formats. Independent regeneration and approval; edits to vehicle facts invalidate generated content.
-- Dream Motors contact details, PKR formatting, seller-information disclaimers and basic phone/email redaction. Always manually review public copy for personal information, unsupported claims, and accuracy before use.
-- Up to eight photographs, retained with drafts in IndexedDB in the current browser.
-- Draft reopening, overwrite confirmation, private JSON backup and public text export. JSON backups contain private seller messages and images; handle securely. JSON import is not implemented.
-- Feed and story copy for manual use in 1080 × 1350 and 1080 × 1920 Canva layouts. No automatic Canva editing, image composition, scheduling or social publishing.
+On managed machines where the default config directory is unavailable, set `XDG_CONFIG_HOME` to a writable directory outside the checkout. The smoke test uses a real local D1 database and creates test accounts; run it only against your local test runtime. It checks authentication, account isolation, photos, concurrent stale writes, absent AI and auth rate limiting. Unit tests mock the AI provider; they do not establish real model availability or factual accuracy.
 
-## Scope and limitations
+For optional local AI testing, put `OPENAI_API_KEY` in ignored `.dev.vars`. Never commit it. Default model: `gpt-4.1-mini`, override with `OPENAI_MODEL`. Real OpenAI requests incur provider usage charges.
 
-The original repository contained only a README: there was no existing application, database, inventory, media library, calendar, authentication or publishing integration to reuse. This implementation is a new local browser workspace, not an authenticated shared backend.
+## Production database setup
 
-Generation uses deterministic templates, not an AI model. Extraction supports selected English terms, common Urdu labels/numerals and some Roman Urdu phrases; unrestricted mixed-language understanding is not implemented. Unrecognized facts must be entered manually. Conflicting model years and transmissions are flagged; other ambiguities require manual review. An inspected status is a user's explicit declaration, not an independently verified result.
+The Cloudflare token needs **Account → Cloudflare Pages → Edit** and **Account → D1 → Edit** for the intended account. Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` securely in environment settings.
 
-Drafts do not sync between browsers or devices and may be removed by browser storage cleanup. Export backups. Do not use a shared browser for private seller records. There is no API key input in the frontend. Adding real AI, authentication and shared storage requires a separate server-side integration (for example Cloudflare Workers with protected routes and a database), plus credentials supplied through secure platform settings. Do not put secrets in static files.
+```sh
+python3 scripts/provision-cloud.py
+```
 
-Tests cover the provided Daihatsu Cuore case, incomplete details, conflicting information, selected Urdu/Roman Urdu input and private contact redaction.
+This creates/reuses the `dream-motors-studio` D1 database, applies the initial idempotent schema, and binds it to the Pages production environment as `DB`. It preserves unrelated D1 bindings. Production D1 access must be confirmed; local tests do not prove production readiness. Provisioning requires a token with D1 permission. The initial schema is not an upgrade migration for an older incompatible database.
+
+Alternatively, create a D1 database in the Cloudflare dashboard, execute `server/schema.sql` using its console, then bind it under the Pages project's Settings → Bindings as `DB`.
+
+## OpenAI configuration
+
+In Cloudflare's **dream-motors-studio Pages project → Settings → Variables and Secrets**, add an encrypted secret named `OPENAI_API_KEY` to production. Enter the API key directly there, not in chat, the frontend, GitHub, or the Cloudflare API token field. Optional plain variable `OPENAI_MODEL` selects a compatible Chat Completions model. Redeploy after changing bindings/secrets. The key is used only by the server worker. Each signed-in user is limited to 30 AI requests per 15 minutes per IP/account pair. Configure appropriate provider project spending limits.
+
+The AI endpoint strips common Pakistani phone numbers and emails, validates JSON shapes/size and forces inspection to unverified during extraction. These checks cannot guarantee factual correctness or catch all private information. Review every claim, price and personal detail before approving public content. Signup is public; each account sees only its own listings. There is no team sharing, email verification, self-service password reset or automatic social publishing.
+
+## Deploy
+
+```sh
+npm test
+npm run build
+npx --yes wrangler@4.160.1 pages deploy dist --project-name=dream-motors-studio --branch=main
+```
+
+The build includes `_worker.js` and API routing. Use Wrangler for deployment of the complete backend. The project is served at `https://dream-motors-studio.pages.dev`. Verify `/api/session` and real account save/reopen after D1 is bound. Without D1, the server explicitly reports cloud storage unavailable and all local workflows remain usable. Without `OPENAI_API_KEY`, AI returns a clear configuration error and preserves existing content.
+
+Cloud saves use explicit upload, per-user IDs and revision checks. They do not automatically merge local drafts or other-device edits. On a conflict, retain/export your local edits and reopen the cloud listing. Workspace limit: 500 cloud listings/account. Photos larger than 800 KB as data URLs must be re-added for compression before syncing. Private JSON exports include seller messages/photos; protect them. Browser storage can be cleared and is not a backup. On shared devices local drafts remain accessible after signing out.
