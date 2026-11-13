@@ -25,7 +25,17 @@ Local browser drafts are separate from the standalone Pages origin; they are not
 
 ## Vehicle reference photos
 
-In `/vehicles/`, use **Vehicle reference photos → Attach photos** above the vehicle fields. Attach up to eight JPEG/PNG/WebP files (3 MB input each). Click a thumbnail for a larger view; use Remove to detach it. Save draft retains photos in this browser; Sync to cloud retains them with the car across devices. Inventory entries show a photo count and a protected thumbnail. Full photo previews require the existing owner session. Photos also follow the existing explicit planner-transfer workflow.
+In `/vehicles/`, use **Vehicle reference photos → Attach photos** above the vehicle fields. Attach up to eight JPEG/PNG/WebP files (3 MB input each). Click a thumbnail for a larger view; use Remove to detach it. Changes and photos are backed up automatically in this browser. While signed in, they also save automatically to cloud storage; wait for **Saved to cloud** before closing. Inventory entries show a photo count and a protected thumbnail. Full photo previews require the existing owner session. Photos also follow the existing explicit planner-transfer workflow.
+
+## Automatic saving and reopening
+
+Generated content, edits, approvals, car details and photos save automatically. Incomplete car details remain backed up locally until make and model are entered. Signed-in listings are saved to the existing Durable Object, using a serialized queue and optimistic revisions. The status bar distinguishes local backup, pending cloud saves, successful saves and failures. Save now / Save to cloud now can flush immediately.
+
+Reopening restores the active listing and checks for a newer cloud version when the local copy is clean. On a fresh signed-in device it restores the latest cloud listing; Saved listings and Vehicle inventory also include cloud records. Signing in from the workspace opens the saved inventory. Existing browser-only drafts remain intact.
+
+Network failures retain local backups and retry when connectivity returns. A stale cloud revision never silently overwrites another device: the conflict action first keeps a separate local backup, then opens the cloud version. Failed browser storage and failed cloud writes show **Not saved** instead of a success message. Vehicle fact edits retain old generated copy and require regeneration before approval or transfer.
+
+This requires the same authorised sign-in on each device and an Internet connection for cloud saving. Changes are not uploaded while signed out. Browser-only backups cannot survive clearing browser storage; content that was never saved in earlier versions cannot be reconstructed automatically.
 
 ## Optional OpenAI
 

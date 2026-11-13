@@ -1,3 +1,4 @@
+import { DraftAutosave } from "./autosave.js";
 import {
   fields,
   formats,
@@ -18,6 +19,25 @@ let current = {
   photos: [],
 };
 let db;
+let resolveDatabase;
+const databaseReady = new Promise((resolve) => {
+  resolveDatabase = resolve;
+});
+let editEpoch = 0;
+let autosaver;
+function activeListing(id) {
+  try {
+    localStorage.setItem("dm-active-listing", id);
+  } catch {}
+}
+function touch({ immediate = false } = {}) {
+  editEpoch++;
+  activeListing(current.id);
+  if (!autosaver) return Promise.resolve();
+  const item = snapshotListing();
+  return autosaver.enqueue(item, session.user?.id, { immediate });
+}
+
 const notify = (text) => {
   $("status").textContent = text;
 };
@@ -64,10 +84,12 @@ function fill(v = {}) {
 }
 function dirty() {
   if (Object.keys(current.outputs).length) {
-    current.outputs = {};
     current.approved = {};
+    current.needsRegeneration = true;
     renderOutputs();
-    notify("Vehicle facts changed. Generate updated content before approval.");
+    notify(
+      "Vehicle facts changed. Your existing copy is kept; regenerate all content before approving or sending it.",
+    );
   }
 }
 $("vehicleForm").addEventListener("input", (e) => {
@@ -83,7 +105,7 @@ function renderOutputs() {
     const heading = document.createElement("h3");
     heading.textContent = label + (current.approved[key] ? " · Approved" : "");
     const area = document.createElement("textarea");
-    current.outputs[key]=compactText(current.outputs[key]);
+    current.outputs[key] = compactText(current.outputs[key]);
     area.value = current.outputs[key];
     area.rows = key === "caption" ? 9 : 4;
     area.setAttribute("aria-label", label);
@@ -92,8 +114,16 @@ function renderOutputs() {
       current.outputs[key] = area.value;
       current.approved[key] = false;
       updateApproval();
+      touch();
     };
-    area.onblur=()=>{current.outputs[key]=compactText(area.value);area.value=current.outputs[key];};
+    area.onblur = () => {
+      const compact = compactText(area.value);
+      if (compact !== current.outputs[key]) {
+        current.outputs[key] = compact;
+        area.value = compact;
+        touch();
+      }
+    };
     const tools = document.createElement("div");
     tools.className = "tools";
     for (const [name, fn] of [
@@ -118,6 +148,7 @@ function renderOutputs() {
         () => {
           current.approved[key] = false;
           renderOutputs();
+          touch();
         },
       ],
       [
@@ -138,12 +169,17 @@ function renderOutputs() {
       [
         "Approve",
         () => {
+          if (current.needsRegeneration)
+            return notify(
+              "Vehicle facts changed. Regenerate all content before approval.",
+            );
           if (!current.outputs[key].trim())
             return notify("This format is empty.");
           current.outputs[key] = redact(current.outputs[key]);
           current.approved[key] = true;
           renderOutputs();
-          notify("Format approved. Save draft to retain your approval.");
+          touch();
+          notify("Format approved. Saving automatically.");
         },
       ],
     ]) {
@@ -191,7 +227,8 @@ function renderPhotos() {
     remove.onclick = () => {
       current.photos.splice(i, 1);
       renderPhotos();
-      notify("Photo removed from this draft. Save or sync to keep the change.");
+      touch();
+      notify("Photo removed. Saving the change automatically.");
     };
     box.append(view, caption, remove);
     $("photoList").append(box);
@@ -228,12 +265,10 @@ $("photos").onchange = async (e) => {
     }
   }
   renderPhotos();
+  if (added) touch();
   e.target.value = "";
   if (added)
-    notify(
-      added +
-        " photo(s) attached to this car. Save draft or sync to cloud to keep them.",
-    );
+    notify(added + " photo(s) attached to this car. Saving automatically.");
 };
 function showStudio() {
   showPanel("workspace", "studioNav");
@@ -252,6 +287,7 @@ $("manualTab").onclick = () => {
 };
 $("example").onclick = () => {
   $("message").value = example;
+  touch();
 };
 $("extract").onclick = async () => {
   if (!$("message").value.trim())
@@ -286,6 +322,7 @@ $("extract").onclick = async () => {
       p.textContent = w;
       $("warnings").append(p);
     }
+    touch();
     notify("Details extracted. Confirm the fields below before generating.");
   } catch (error) {
     notify(error.message);
@@ -317,8 +354,8 @@ function requestStore(mode, fn) {
   });
 }
 async function refreshDrafts() {
-  if (!db) return;
-  const items = await requestStore("readonly", (s) => s.getAll());
+  if (!db && !session.user) return;
+  const items = await loadListings();
   $("count").textContent = items.length;
   $("draftList").replaceChildren();
   if (!items.length) $("draftList").textContent = "No saved listings yet.";
@@ -328,15 +365,7 @@ async function refreshDrafts() {
       const row = document.createElement("button");
       row.className = "draft-row";
       row.textContent = `${item.values.make || "Untitled"} ${item.values.model || "listing"} · ${item.values.year || ""} — ${formats.every(([k]) => item.approved[k]) ? "Approved" : "Draft"} · ${new Date(item.updated).toLocaleString()}`;
-      row.onclick = () => {
-        if (
-          !confirm(
-            "Open this saved listing? Unsaved edits in the current listing will be replaced.",
-          )
-        )
-          return;
-        openListing(item);
-      };
+      row.onclick = () => openInventoryItem(item);
       $("draftList").append(row);
     });
 }
@@ -345,24 +374,7 @@ $("draftNav").onclick = async () => {
   await refreshDrafts();
 };
 $("save").onclick = async () => {
-  if (!db)
-    return notify("Browser storage is unavailable. Export your draft instead.");
-  if (!$("make").value.trim() || !$("model").value.trim())
-    return notify("Enter a make and model before saving.");
-  try {
-    const existing = await requestStore("readonly", (s) => s.get(current.id));
-    if (
-      existing &&
-      !confirm("Update this saved draft with your current edits?")
-    )
-      return;
-    const item = snapshotListing();
-    await requestStore("readwrite", (s) => s.put(item));
-    await refreshDrafts();
-    notify("Draft and photographs saved in this browser.");
-  } catch {
-    notify("Save failed. Storage may be full or disabled. Export a backup.");
-  }
+  await touch({ immediate: true });
 };
 function download(content, name, type) {
   const url = URL.createObjectURL(new Blob([content], { type })),
@@ -387,14 +399,17 @@ $("exportCopy").onclick = () =>
     "dream-motors-public-copy.txt",
     "text/plain",
   );
-$("new").onclick = () => {
+$("new").onclick = async () => {
   if (
     !confirm(
       "Start a new listing? Save or export any edits you want to keep first.",
     )
   )
     return;
+  await autosaver?.settled();
   current = { id: crypto.randomUUID(), outputs: {}, approved: {}, photos: [] };
+  editEpoch++;
+  activeListing(current.id);
   fill();
   setPlanning({});
   $("message").value = "";
@@ -402,6 +417,10 @@ $("new").onclick = () => {
   renderOutputs();
   renderPhotos();
   showStudio();
+  $("saveState").dataset.state = "idle";
+  $("saveState").textContent = "New listing · changes will save automatically.";
+  $("retrySave").hidden = true;
+  $("openCloudCopy").hidden = true;
   notify("New listing started.");
 };
 try {
@@ -410,12 +429,20 @@ try {
     req.result.createObjectStore("drafts", { keyPath: "id" });
   req.onsuccess = () => {
     db = req.result;
+    resolveDatabase(true);
     refreshDrafts().catch(() => notify("Could not read saved listings."));
   };
-  req.onerror = () =>
-    notify("Browser storage is unavailable. Use JSON export for backups.");
+  req.onerror = () => {
+    resolveDatabase(false);
+    notify(
+      "Browser storage is unavailable. Cloud saving can still be used when signed in.",
+    );
+  };
 } catch {
-  notify("Browser storage is unavailable. Use JSON export for backups.");
+  resolveDatabase(false);
+  notify(
+    "Browser storage is unavailable. Cloud saving can still be used when signed in.",
+  );
 }
 
 // Cloud features are optional: local drafts remain usable if the API is offline.
@@ -427,6 +454,7 @@ async function api(path, { method = "GET", body } = {}) {
     credentials: "same-origin",
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(30000),
   });
   let data;
   try {
@@ -504,8 +532,10 @@ async function generateContent(key) {
     } else {
       current.outputs = out;
       current.approved = {};
+      current.needsRegeneration = false;
     }
     renderOutputs();
+    await touch({ immediate: true });
     notify(
       mode === "ai"
         ? "AI content generated. Verify every claim and number before approval."
@@ -543,6 +573,10 @@ function snapshotListing() {
 }
 function openListing(item) {
   current = structuredClone(item);
+  if (item.source === "Cloud") current.cloudSavedLocalUpdated = current.updated;
+  editEpoch++;
+  activeListing(current.id);
+  autosaver?.restore(current, session.user?.id);
   fill(item.values);
   setPlanning(item);
   $("message").value = item.message || "";
@@ -550,9 +584,17 @@ function openListing(item) {
   renderOutputs();
   renderPhotos();
   showStudio();
-  notify(
-    "Listing reopened. Changes are saved only when you choose Save draft or Sync to cloud.",
-  );
+  if (autosaver) {
+    $("saveState").dataset.state =
+      current.cloudOwner === session.user?.id &&
+      current.updated === current.cloudSavedLocalUpdated
+        ? "cloud-saved"
+        : "local-only";
+    $("saveState").textContent = saveMessages[$("saveState").dataset.state];
+    $("openCloudCopy").hidden = true;
+    $("retrySave").hidden = true;
+  }
+  notify("Listing reopened. Changes are saved automatically.");
 }
 function renderAccount() {
   const logged = !!session.user;
@@ -563,7 +605,7 @@ function renderAccount() {
     : "";
   $("cloudStatus").textContent = session.cloud
     ? logged
-      ? "Cloud workspace connected. Sync listings individually to upload their details and photos."
+      ? "Cloud workspace connected. Content, edits and photos save automatically across devices."
       : "Create an account or sign in to your private cloud workspace."
     : "Cloud storage is not configured. Local drafts, inventory, calendar and posters remain available.";
   if (session.cloud)
@@ -610,8 +652,14 @@ async function authenticate(signup = false) {
     });
     $("password").value = "";
     await checkSession();
+    if (hasContent()) await touch({ immediate: true });
+    else {
+      listingCache = await loadListings();
+      renderInventory();
+      showPanel("inventoryPanel", "inventoryNav");
+    }
     notify(
-      "Signed in. Your existing browser drafts have not been uploaded. Use Sync to cloud on each listing you want to keep online.",
+      "Signed in. This listing will save automatically to your cloud workspace.",
     );
   } catch (error) {
     notify(error.message);
@@ -626,6 +674,7 @@ $("authForm").onsubmit = (e) => {
 $("signup").onclick = () => authenticate(true);
 $("logout").onclick = async () => {
   try {
+    await autosaver?.settled();
     await api("/api/logout", { method: "POST" });
     session.user = null;
     listingCache = [];
@@ -636,49 +685,11 @@ $("logout").onclick = async () => {
   }
 };
 $("sync").onclick = async () => {
-  if (!session.user) return notify("Sign in first.");
-  if (!$("make").value.trim() || !$("model").value.trim())
-    return notify("Enter a make and model first.");
-  const item = snapshotListing();
-  if (item.cloudOwner && item.cloudOwner !== session.user.id)
-    return notify(
-      "This draft belongs to another cloud account. Start a new listing to avoid mixing accounts.",
-    );
-  if (
-    !confirm(
-      "Upload this listing, original seller message and photos to your private cloud workspace?",
-    )
-  )
-    return;
-  const button = $("sync");
-  button.disabled = true;
-  try {
-    const result = await api("/api/listings/" + item.id, {
-      method: "PUT",
-      body: {
-        ...item,
-        revision: item.cloudOwner === session.user.id ? item.revision : 0,
-      },
-    });
-    if (current.id === item.id) {
-      current.revision = result.revision;
-      current.cloudOwner = session.user.id;
-    }
-    if (db)
-      await requestStore("readwrite", (s) =>
-        s.put({
-          ...item,
-          revision: result.revision,
-          cloudOwner: session.user.id,
-        }),
-      );
-    notify("Listing synced to your private cloud workspace.");
-    refreshDrafts();
-  } catch (error) {
-    notify(error.message);
-  } finally {
-    button.disabled = false;
+  if (!session.user) {
+    showPanel("accountPanel", "accountNav");
+    return notify("Sign in to save across devices.");
   }
+  await touch({ immediate: true });
 };
 async function loadListings() {
   const local = db ? await requestStore("readonly", (s) => s.getAll()) : [];
@@ -711,13 +722,15 @@ async function loadListings() {
 async function openInventoryItem(item) {
   if (!confirm("Open this listing? Save any current edits first.")) return;
   try {
+    await autosaver?.settled();
     const full =
       item.source === "Cloud"
         ? {
             ...(await api("/api/listings/" + item.id)),
             cloudOwner: session.user.id,
           }
-        : item;
+        : (db ? await requestStore("readonly", (s) => s.get(item.id)) : null) ||
+          item;
     openListing(full);
   } catch (error) {
     notify(error.message);
@@ -896,7 +909,7 @@ for (const [id, format] of [
       button.disabled = false;
     }
   };
-checkSession();
+const sessionReady = checkSession();
 
 if (existingStudio) {
   $("username").type = "email";
@@ -920,6 +933,10 @@ if (existingStudio) {
   send.onclick = async () => {
     if (!session.user)
       return notify("Sign in with your planner account first.");
+    if (current.needsRegeneration)
+      return notify(
+        "Vehicle facts changed. Regenerate all content before sending it to the planner.",
+      );
     if (!current.outputs.title || !current.outputs.caption)
       return notify("Generate content first.");
     if (
@@ -930,26 +947,12 @@ if (existingStudio) {
       return;
     send.disabled = true;
     try {
-      const item = snapshotListing();
-      const result = await api("/api/listings/" + item.id, {
-        method: "PUT",
-        body: {
-          ...item,
-          revision: item.cloudOwner === session.user.id ? item.revision : 0,
-        },
-      });
-      if (current.id === item.id) {
-        current.revision = result.revision;
-        current.cloudOwner = session.user.id;
-      }
-      if (db)
-        await requestStore("readwrite", (s) =>
-          s.put({
-            ...item,
-            revision: result.revision,
-            cloudOwner: session.user.id,
-          }),
+      await touch({ immediate: true });
+      if ($("saveState").dataset.state !== "cloud-saved")
+        throw Error(
+          "Save to cloud must finish successfully before sending to the planner.",
         );
+      const item = snapshotListing();
       const transfer = await api("/api/listings/" + item.id + "/planner", {
         method: "POST",
         body: {},
@@ -1013,6 +1016,7 @@ if (existingStudio) {
         mediaId: select.value,
       });
       renderPhotos();
+      touch();
     } catch (error) {
       notify(error.message);
     } finally {
@@ -1020,3 +1024,235 @@ if (existingStudio) {
     }
   };
 }
+
+function hasContent() {
+  return !!(
+    $("message").value.trim() ||
+    Object.keys(current.outputs).length ||
+    current.photos.length ||
+    fields.some(
+      ([k]) => !["type", "inspection"].includes(k) && $(k).value.trim(),
+    )
+  );
+}
+const saveMessages = {
+  "saving-local": "Backing up changes…",
+  pending: "Waiting to save to cloud…",
+  "saving-cloud": "Saving to cloud…",
+  "cloud-saved": "Saved to cloud · available across your signed-in devices",
+  "local-only": "Saved on this device · sign in to save across devices",
+  "needs-details": "Saved on this device · add make and model for cloud saving",
+  "save-error":
+    "Not saved: browser backup and cloud save failed. Keep this tab open and export a copy.",
+  "local-error":
+    "Browser backup failed · check cloud save status or export a copy",
+  "cloud-error":
+    "Cloud save failed · changes kept on this device. Retry when connected.",
+  "signed-out":
+    "Sign-in expired · changes kept on this device. Sign in to finish saving.",
+  conflict:
+    "Newer cloud changes found · your local edits are kept. Open the cloud version to resolve.",
+  "account-mismatch":
+    "This draft belongs to another cloud account · local copy retained.",
+};
+autosaver = new DraftAutosave({
+  local: async (item) => {
+    await databaseReady;
+    if (!db) throw Error("Browser storage unavailable");
+    await requestStore("readwrite", (s) => s.put(item));
+  },
+  remote: async (item, owner, revision) => {
+    if (session.user?.id !== owner)
+      throw Object.assign(Error("Sign in again to save."), { status: 401 });
+    return api("/api/listings/" + item.id, {
+      method: "PUT",
+      body: { ...item, revision },
+    });
+  },
+  metadata: (id, metadata) => {
+    if (current.id === id) Object.assign(current, metadata);
+  },
+  status: (id, state, error) => {
+    if (current.id !== id) return;
+    $("saveState").dataset.state = state;
+    $("saveState").textContent = saveMessages[state] || state;
+    $("retrySave").hidden = ![
+      "cloud-error",
+      "local-error",
+      "save-error",
+      "signed-out",
+    ].includes(state);
+    $("openCloudCopy").hidden = state !== "conflict";
+    if (state === "cloud-error" && error?.message)
+      $("saveState").textContent += " " + error.message;
+  },
+});
+const editableIds = new Set([
+  "message",
+  ...fields.map(([k]) => k),
+  "listingStatus",
+  "scheduleAt",
+  "scheduleChannel",
+  "scheduleState",
+]);
+document.addEventListener("input", (e) => {
+  if (editableIds.has(e.target.id)) touch();
+});
+document.addEventListener("change", (e) => {
+  if (editableIds.has(e.target.id)) touch();
+});
+$("retrySave").onclick = async () => {
+  await checkSession();
+  await autosaver.retry();
+  if (hasContent()) await touch({ immediate: true });
+};
+$("openCloudCopy").onclick = async () => {
+  if (!session.user) return notify("Sign in first.");
+  if (
+    !confirm(
+      "Open the latest cloud version? A separate local backup of your current edits will be kept first.",
+    )
+  )
+    return;
+  try {
+    const copy = snapshotListing();
+    copy.id = crypto.randomUUID();
+    delete copy.cloudOwner;
+    delete copy.revision;
+    delete copy.cloudSavedLocalUpdated;
+    await databaseReady;
+    if (!db)
+      throw Error("Cannot keep a local backup. Export your edits first.");
+    await requestStore("readwrite", (s) => s.put(copy));
+    const latest = await api("/api/listings/" + current.id);
+    latest.cloudOwner = session.user.id;
+    latest.cloudSavedLocalUpdated = latest.updated;
+    openListing(latest);
+    await requestStore("readwrite", (s) => s.put(latest));
+    $("saveState").dataset.state = "cloud-saved";
+    $("saveState").textContent = saveMessages["cloud-saved"];
+    $("openCloudCopy").hidden = true;
+    notify(
+      "Cloud version opened. Your previous edits remain in Saved listings as a separate local backup.",
+    );
+  } catch (error) {
+    notify(error.message);
+  }
+};
+window.addEventListener("online", async () => {
+  await checkSession();
+  await autosaver.retry();
+  if (hasContent()) await touch({ immediate: true });
+});
+window.addEventListener("offline", () => {
+  if (hasContent()) {
+    $("saveState").dataset.state = "offline";
+    $("saveState").textContent =
+      "Offline · changes are backed up on this device and will retry when connected.";
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") autosaver.flush();
+});
+window.addEventListener("pagehide", () => autosaver.flush());
+window.addEventListener("beforeunload", (e) => {
+  if (
+    [
+      "pending",
+      "saving-cloud",
+      "conflict",
+      "cloud-error",
+      "local-error",
+      "save-error",
+    ].includes($("saveState").dataset.state)
+  ) {
+    autosaver.flush();
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+(async function restoreWorkspace() {
+  await Promise.all([databaseReady, sessionReady]);
+  if (editEpoch || hasContent()) {
+    return;
+  }
+  const epoch = editEpoch;
+  let active;
+  try {
+    active = localStorage.getItem("dm-active-listing");
+  } catch {}
+  let local;
+  if (db) {
+    const drafts = await requestStore("readonly", (s) => s.getAll());
+    local = active
+      ? drafts.find((x) => x.id === active)
+      : drafts.sort((a, b) =>
+          String(b.updated).localeCompare(String(a.updated)),
+        )[0];
+  }
+  try {
+    let item = local;
+    if (session.user) {
+      if (
+        local?.cloudOwner === session.user.id &&
+        local.updated === local.cloudSavedLocalUpdated
+      ) {
+        const remote = await api("/api/listings/" + local.id);
+        item = {
+          ...remote,
+          cloudOwner: session.user.id,
+          cloudSavedLocalUpdated: remote.updated,
+        };
+      } else if (!local) {
+        let remote;
+        if (active) {
+          try {
+            remote = await api("/api/listings/" + active);
+          } catch (error) {
+            if (error.status !== 404) throw error;
+          }
+        }
+        if (!remote) {
+          const { listings } = await api("/api/listings");
+          if (listings.length)
+            remote = await api("/api/listings/" + listings[0].id);
+        }
+        if (remote)
+          item = {
+            ...remote,
+            cloudOwner: session.user.id,
+            cloudSavedLocalUpdated: remote.updated,
+          };
+      }
+    }
+    if (editEpoch !== epoch || hasContent()) return;
+    if (item) {
+      openListing(item);
+      await autosaver.persist(item.id).catch(() => {});
+      if (
+        session.user &&
+        item.cloudOwner === session.user.id &&
+        item.updated === item.cloudSavedLocalUpdated
+      ) {
+        $("saveState").dataset.state = "cloud-saved";
+        $("saveState").textContent = saveMessages["cloud-saved"];
+      } else {
+        await touch({ immediate: true });
+      }
+      notify(
+        "Your last saved listing has been restored. Edits save automatically.",
+      );
+    }
+  } catch (error) {
+    if (local && editEpoch === epoch) {
+      openListing(local);
+      await touch();
+    }
+    notify(
+      "Cloud restore is unavailable. Local backups are retained. " +
+        error.message,
+    );
+  } finally {
+    refreshDrafts().catch(() => {});
+  }
+})();

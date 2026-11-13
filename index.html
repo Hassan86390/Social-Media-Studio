@@ -51,6 +51,15 @@
         Local drafts stay in this browser. Sign in to sync selected listings
         across devices. Review all content before sharing.
       </div>
+      <div class="save-bar">
+        <span id="saveState" role="status" aria-live="polite"
+          >Sign in to save automatically across devices.</span
+        ><button id="retrySave" type="button" class="secondary" hidden>
+          Retry save</button
+        ><button id="openCloudCopy" type="button" class="secondary" hidden>
+          Open cloud version
+        </button>
+      </div>
       <div id="status" role="status" aria-live="polite"></div>
       <section id="accountPanel" class="card feature-panel" hidden>
         <span class="eyebrow">YOUR PRIVATE CLOUD WORKSPACE</span>
@@ -243,7 +252,8 @@
                 </div>
                 <p class="hint">
                   Attach photos to this car’s details. Click a photo to view it
-                  full size. Save draft or sync to cloud to keep attachments.
+                  full size. Photos are saved automatically. Sign in to keep
+                  them available across devices.
                 </p>
                 <button id="attachPhotos" type="button" class="secondary">
                   + Attach photos</button
@@ -323,8 +333,8 @@
             </div>
             <div id="outputs"></div>
             <div class="actions">
-              <button id="save" class="primary">Save draft</button
-              ><button id="sync" class="secondary">Sync to cloud</button
+              <button id="save" class="primary">Save now</button
+              ><button id="sync" class="secondary">Save to cloud now</button
               ><button id="export" class="secondary">Export JSON</button
               ><button id="exportCopy" class="secondary">
                 Export public copy

@@ -10,11 +10,11 @@ Vehicle listing workspace for Cloudflare Pages, with an optional D1-backed priva
 
 - Quick paste in English, Urdu or Roman Urdu through optional AI; conservative rule-based extraction remains available without AI. Review editable vehicle fields and ambiguity warnings before generation.
 - Seven editable text formats, independent regeneration, approvals, private contact redaction and seller-information disclaimers. AI output always requires human fact checking.
-- Local IndexedDB drafts retained across this upgrade, up to eight compressed photos, JSON backup and public text exports.
+- Automatic local backup and signed-in cloud saving, last-listing restoration, local IndexedDB drafts retained across this upgrade, up to eight compressed photos, JSON backup and public text exports.
 - Searchable saved vehicle inventory with Available / Reserved / Sold / Required / Archived statuses. Existing listings reopen for editing without creating new records.
 - Content calendar with channel and manual task statuses, device-local date/time entry, and UTC iCalendar export. Calendar entries are reminders, not automatic social posts.
 - Branded PNG downloads, 1080 × 1350 feed and 1080 × 1920 story. Posters use reviewed facts and the first attached photo. No Canva API integration.
-- Optional username/password accounts, private D1 listings/photos, explicit individual sync, optimistic revisions, request size limits, HttpOnly Secure SameSite sessions, PBKDF2 password hashes and database-backed rate limits.
+- Optional username/password accounts, private D1 listings/photos, automatic signed-in cloud saving, optimistic revisions, request size limits, HttpOnly Secure SameSite sessions, PBKDF2 password hashes and database-backed rate limits.
 
 ## Local build and unit checks
 
@@ -82,4 +82,4 @@ npx --yes wrangler@4.160.1 pages deploy dist --project-name=dream-motors-studio 
 
 The build includes `_worker.js` and API routing. Use Wrangler for deployment of the complete backend. The project is served at `https://dream-motors-studio.pages.dev`. Verify `/api/session` and real account save/reopen after D1 is bound. Without D1, the server explicitly reports cloud storage unavailable and all local workflows remain usable. Without `OPENAI_API_KEY`, AI returns a clear configuration error and preserves existing content.
 
-Cloud saves use explicit upload, per-user IDs and revision checks. They do not automatically merge local drafts or other-device edits. On a conflict, retain/export your local edits and reopen the cloud listing. Workspace limit: 500 cloud listings/account. Photos larger than 800 KB as data URLs must be re-added for compression before syncing. Private JSON exports include seller messages/photos; protect them. Browser storage can be cleared and is not a backup. On shared devices local drafts remain accessible after signing out.
+Signed-in cloud saves run automatically using serialized writes, per-user IDs and revision checks. On a conflict, keep the local backup and use Open cloud version to resolve it without silently overwriting other-device edits. Workspace limit: 500 cloud listings/account. Photos larger than 800 KB as data URLs must be re-added for compression before syncing. Private JSON exports include seller messages/photos; protect them. Browser storage can be cleared and is not a backup. On shared devices local drafts remain accessible after signing out.

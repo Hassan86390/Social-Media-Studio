@@ -122,6 +122,11 @@ export async function vehicles(store: any, r: Request, path: string[]) {
         if (post) return Response.json({ postId: row.post_id, existing: true });
       }
       const item = parse(row);
+      if (item.needsRegeneration)
+        throw new HttpError(
+          400,
+          "Vehicle facts changed. Regenerate content before creating a planner draft.",
+        );
       if (!item.outputs?.title || !item.outputs?.caption)
         throw new HttpError(400, "Generate and save content first.");
       const mediaIds = [];

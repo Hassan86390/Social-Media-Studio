@@ -1,4 +1,10 @@
-import { fields, formats, redact, generate, compactText } from "../src/engine.js";
+import {
+  fields,
+  formats,
+  redact,
+  generate,
+  compactText,
+} from "../src/engine.js";
 const encoder = new TextEncoder();
 const json = (data, status = 200, headers = {}) =>
   Response.json(data, {
@@ -169,6 +175,7 @@ export function sanitizeListing(input) {
       );
   return {
     values,
+    needsRegeneration: input.needsRegeneration === true,
     outputs,
     approved,
     message: String(input.message || "").slice(0, 20000),

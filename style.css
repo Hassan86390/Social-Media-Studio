@@ -740,4 +740,28 @@ button:disabled {
   }
 }
 
-.output textarea{line-height:1.4}
+.output textarea {
+  line-height: 1.4;
+}
+.save-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  font-size: 11px;
+  color: #5d7353;
+}
+.save-bar span[data-state="cloud-saved"] {
+  color: #2c6c3b;
+}
+.save-bar span[data-state="cloud-error"],
+.save-bar span[data-state="conflict"],
+.save-bar span[data-state="signed-out"],
+.save-bar span[data-state="local-error"] {
+  color: #9b4b29;
+}
+
+.save-bar span[data-state="save-error"] {
+  color: #9b4b29;
+}
